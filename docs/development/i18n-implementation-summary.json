@@ -1,0 +1,23 @@
+{
+  "files_created": [
+    "assets/js/i18n.js",
+    "assets/locales/id.json",
+    "assets/locales/en.json"
+  ],
+  "files_patched": [
+    "assets/js/app.js",
+    "assets/js/ui.js",
+    "assets/js/components.js",
+    "assets/js/views-tasks.js",
+    "assets/js/views-dashboard.js",
+    "assets/js/views-modul.js",
+    "assets/js/views-reports.js",
+    "assets/js/views-reminders.js",
+    "assets/js/views-users.js",
+    "assets/js/views-activity.js",
+    "assets/js/views-notes.js",
+    "assets/js/views-auth.js",
+    "index.html",
+    "assets/css/styles.css"
+  ]
+}

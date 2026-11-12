@@ -1,0 +1,74 @@
+{
+  "name": "management_tugas_redesign_terbaru",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "vite build --config vite.auth.config.js",
+    "predev": "npm run build",
+    "dev": "node server.js",
+    "start": "node server.js",
+    "bootstrap:owner": "node scripts/bootstrap-owner.js",
+    "migrate": "node scripts/apply-migrations.js",
+    "migrate:test": "node scripts/apply-test-migrations.js",
+    "backup": "node scripts/backup-database.js",
+    "restore": "node scripts/restore-database.js",
+    "backup:schedule": "node scripts/backup-scheduler.js",
+    "test": "node --test tests/api.test.js tests/activity-analytics.test.js tests/activity-view.test.js tests/server.test.js tests/store-auth.test.js tests/i18n.test.js tests/i18n-parity.test.js tests/sql-statements.test.js tests/registration-forensic-test.mjs tests/registration-mock-test.mjs",
+    "test:unit": "node --test tests/api.test.js tests/activity-analytics.test.js tests/activity-view.test.js tests/server.test.js tests/store-auth.test.js",
+    "test:integration": "node --env-file-if-exists=.env.local --test tests/pagination-owner.integration.test.js",
+    "test:integration:check": "node --env-file-if-exists=.env.local scripts/check-test-db.mjs",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:e2e",
+    "lhci": "lhci",
+    "lhci:build": "lhci build",
+    "lhci:upload": "lhci upload",
+    "analyze": "vite build --mode analyze",
+    "coverage": "c8 npm run test:unit",
+    "outdated": "npm outdated",
+    "audit": "npm audit --audit-level=high",
+    "audit:fix": "npm audit fix",
+    "depcheck": "npx depcheck",
+    "bundle": "node scripts/bundle-visualizer.js",
+    "precommit": "npm run depcheck"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1156.0",
+    "@aws-sdk/s3-request-presigner": "^3.1156.0",
+    "@neon/config": "^1.9.4",
+    "@neon/env": "^1.6.5",
+    "@neondatabase/auth": "^0.7.0-beta",
+    "@neondatabase/serverless": "^1.2.0",
+    "@upstash/ratelimit": "^2.2.0",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "ioredis": "^5.4.2",
+    "jose": "^6.2.5",
+    "node-cron": "^3.0.3",
+    "resend": "^3.2.0"
+  },
+  "devDependencies": {
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.64.1",
+    "c8": "^12.0.0",
+    "depcheck": "^1.4.7",
+    "husky": "^9.1.7",
+    "playwright": "^1.48.0",
+    "rollup-plugin-visualizer": "^5.14.0",
+    "vite": "^6.4.5"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run depcheck"
+    }
+  },
+  "overrides": {
+    "zod": "^4.6.6"
+  }
+}

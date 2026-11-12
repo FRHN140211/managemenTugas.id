@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offline — ManagenTugas.id</title>
+<link rel="stylesheet" href="/assets/css/styles.css">
+<style>
+  .offline-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    text-align: center;
+  }
+  .offline-card {
+    max-width: 420px;
+    width: 100%;
+  }
+  .offline-icon {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: var(--primary);
+    -webkit-mask: url("/assets/icons/offline-plug.png") center / contain no-repeat;
+    mask: url("/assets/icons/offline-plug.png") center / contain no-repeat;
+  }
+  .offline-attribution {
+    margin: 8px 0 0;
+    color: var(--ink-muted);
+    font-size: var(--fs-meta);
+  }
+</style>
+</head>
+<body>
+<div class="offline-wrap">
+  <div class="offline-card">
+    <div class="offline-icon" aria-hidden="true"></div>
+    <h1>Anda sedang offline</h1>
+    <p>Periksa koneksi internet Anda. Beberapa data yang sudah dimuat sebelumnya mungkin masih tersedia.</p>
+    <a class="btn btn-primary" href="/" style="margin-top:16px">Coba lagi</a>
+    <p class="offline-attribution"><a href="https://www.flaticon.com/free-icons/plug" title="plug icons">Plug icons created by Bogdan Rosu - Flaticon</a></p>
+  </div>
+</div>
+</body>
+</html>

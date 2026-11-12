@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /assets/
+Disallow: /node_modules/
+Disallow: /*.json
+Disallow: /update_package.py
+
+Sitemap: https://www.manajementugas.id/sitemap.xml

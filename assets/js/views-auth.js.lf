@@ -1,0 +1,560 @@
+﻿/* ============================================================
+   views-auth.js — Layar masuk: validasi, toggle kata sandi,
+   state loading, kredensial salah, dan kegagalan teknis.
+   Autentikasi menggunakan API server dan sesi cookie httpOnly.
+   ============================================================ */
+
+window.MT = window.MT || {};
+
+(function (MT) {
+  'use strict';
+
+  var form, inputNama, inputEmail, inputSandi, inputKonfirmasi, tombol, alertBox, tombolToggle, tombolMode, tombolSekunder, tombolToggleKonfirmasi;
+  var inputLupaEmail, inputOtp, tombolKirimUlangOtp;
+  var currentMode = 'login';
+  var autentikasiBerlangsung = false;
+
+  function bersihkan() {
+    if (form) MT.bersihkanGalat(form);
+    if (alertBox) alertBox.hidden = true;
+  }
+
+  function tampilkanAlert(judul, pesan, tambahan, jenis) {
+    alertBox.hidden = false;
+    alertBox.className = 'alert alert-' + (jenis || 'danger');
+    alertBox.querySelector('[data-auth-alert-icon]').innerHTML = MT.icon('alert');
+    alertBox.querySelector('[data-auth-alert-title]').textContent = judul;
+    alertBox.querySelector('[data-auth-alert-message]').innerHTML = MT.esc(pesan) +
+      (tambahan ? ' <span class="muted-sm">' + MT.esc(tambahan) + '</span>' : '');
+  }
+
+  function setAuthTexts() {
+    var labels = {
+      name: MT.t('auth.field_name'),
+      email: MT.t('auth.field_email'),
+      password: MT.t('auth.field_password'),
+      'confirm-password': MT.t('auth.field_confirm_password')
+    };
+    document.querySelectorAll('[data-auth-label]').forEach(function (el) {
+      var key = el.getAttribute('data-auth-label');
+      if (labels[key]) el.textContent = labels[key];
+    });
+
+    document.getElementById('auth-name').placeholder = MT.t('auth.placeholder_name');
+    document.getElementById('auth-email').placeholder = MT.t('auth.placeholder_email');
+    document.getElementById('auth-password').placeholder = MT.t('auth.placeholder_password');
+    document.getElementById('auth-password-confirm').placeholder = MT.t('auth.placeholder_confirm_password');
+
+    var eyeShow = MT.t('auth.password_toggle_show');
+    var eyeHide = MT.t('auth.password_toggle_hide');
+    if (tombolToggle) {
+      tombolToggle.setAttribute('aria-label', eyeShow);
+      tombolToggle.innerHTML = MT.icon('eye');
+    }
+    if (tombolToggleKonfirmasi) {
+      tombolToggleKonfirmasi.setAttribute('aria-label', eyeShow);
+      tombolToggleKonfirmasi.innerHTML = MT.icon('eye');
+    }
+  }
+
+  function renderForgotField() {
+    if (!form || document.getElementById('auth-forgot-email')) return;
+    var field = document.createElement('div');
+    field.className = 'field';
+    field.setAttribute('data-auth-field', 'lupa-email');
+    field.innerHTML = [
+      '<label for="auth-forgot-email" data-auth-label="email"></label>',
+      '<div class="input-wrap has-icon">',
+      '<span class="input-icon" data-icon="mail" aria-hidden="true"></span>',
+      '<input id="auth-forgot-email" name="lupaEmail" type="email" autocomplete="email" inputmode="email" maxlength="254" placeholder="" aria-describedby="auth-forgot-email-error">',
+      '</div>',
+      '<p class="field-error" id="auth-forgot-email-error" role="alert" hidden></p>'
+    ].join('');
+    inputLupaEmail = field.querySelector('#auth-forgot-email');
+    tombol.parentNode.insertBefore(field, tombol);
+    field.querySelector('[data-icon]').innerHTML = MT.icon('mail');
+    inputLupaEmail.placeholder = MT.t('auth.forgot_email_placeholder');
+    field.querySelector('label').textContent = MT.t('auth.field_email');
+    inputLupaEmail.addEventListener('input', function () {
+      inputLupaEmail.removeAttribute('aria-invalid');
+      var errEl = field.querySelector('.field-error');
+      if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+      if (alertBox) alertBox.hidden = true;
+    });
+  }
+
+  function removeForgotField() {
+    var forgotField = document.getElementById('auth-forgot-email');
+    if (forgotField && forgotField.closest('.field')) {
+      forgotField.closest('.field').remove();
+    }
+    inputLupaEmail = null;
+  }
+
+  function renderOtpField() {
+    if (!form || document.getElementById('auth-otp')) return;
+    var field = document.createElement('div');
+    field.className = 'field';
+    field.setAttribute('data-auth-field', 'verifikasi-otp');
+    field.innerHTML = [
+      '<label for="auth-otp">Kode verifikasi</label>',
+      '<div class="input-wrap has-icon">',
+      '<span class="input-icon" data-icon="shield" aria-hidden="true"></span>',
+      '<input id="auth-otp" name="otp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="Masukkan kode verifikasi" aria-describedby="auth-otp-error">',
+      '</div>',
+      '<p class="field-error" id="auth-otp-error" role="alert" hidden></p>'
+    ].join('');
+    inputOtp = field.querySelector('#auth-otp');
+    tombol.parentNode.insertBefore(field, tombol);
+    field.querySelector('[data-icon]').innerHTML = MT.icon('shield');
+    inputOtp.addEventListener('input', function () {
+      inputOtp.removeAttribute('aria-invalid');
+      var errEl = field.querySelector('.field-error');
+      if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+      if (alertBox) alertBox.hidden = true;
+    });
+  }
+
+  function removeOtpField() {
+    var otpField = document.getElementById('auth-otp');
+    if (otpField && otpField.closest('.field')) {
+      otpField.closest('.field').remove();
+    }
+    inputOtp = null;
+  }
+
+  function renderMode(mode) {
+    currentMode = mode;
+    var config = {
+      login: {
+        heading: 'auth.login_title',
+        desc: 'auth.login_desc',
+        switchText: 'auth.switch_to_register',
+        switchLabel: 'auth.btn_register',
+        submitLabel: 'auth.btn_login',
+        pageTitle: 'auth.page_title_login',
+        showName: false,
+        showConfirm: false,
+        secondaryVisible: true,
+        secondaryText: 'auth.link_forgot_password',
+        secondaryAction: 'forgot',
+        passwordAutocomplete: 'current-password'
+      },
+      register: {
+        heading: 'auth.register_title',
+        desc: 'auth.register_desc',
+        switchText: 'auth.switch_to_login',
+        switchLabel: 'auth.btn_login',
+        submitLabel: 'auth.btn_create_account',
+        pageTitle: 'auth.page_title_register',
+        showName: true,
+        showConfirm: true,
+        secondaryVisible: false,
+        secondaryText: '',
+        secondaryAction: 'none',
+        passwordAutocomplete: 'new-password'
+      },
+      forgot: {
+        heading: 'auth.forgot_title',
+        desc: 'auth.forgot_desc',
+        switchText: 'auth.switch_back_to_login',
+        switchLabel: 'auth.btn_back_to_login',
+        submitLabel: 'auth.btn_send_link',
+        pageTitle: 'auth.page_title_forgot',
+        showName: false,
+        showConfirm: false,
+        secondaryVisible: true,
+        secondaryText: 'auth.link_back_to_login',
+        secondaryAction: 'login',
+        passwordAutocomplete: 'email'
+      },
+      otp: {
+        heading: 'auth.verify_title',
+        desc: 'auth.verify_desc',
+        switchText: 'auth.switch_back_to_login',
+        switchLabel: 'auth.btn_back_to_login',
+        submitLabel: 'auth.btn_verify_otp',
+        pageTitle: 'auth.page_title_verify',
+        showName: false,
+        showConfirm: false,
+        secondaryVisible: true,
+        secondaryText: 'auth.link_resend_otp',
+        secondaryAction: 'resend',
+        passwordAutocomplete: 'one-time-code'
+      }
+    }[mode] || config.login;
+
+    document.querySelector('[data-auth-heading]').textContent = MT.t(config.heading);
+    document.querySelector('[data-auth-description]').textContent = MT.t(config.desc);
+    document.querySelector('[data-auth-switch-text]').textContent = MT.t(config.switchText);
+    tombolMode.textContent = MT.t(config.switchLabel);
+    tombol.querySelector('.btn-label').textContent = MT.t(config.submitLabel);
+    tombol.setAttribute('data-label-asli', MT.t(config.submitLabel));
+    document.title = MT.t(config.pageTitle) + ' — Management Tugas';
+
+    document.querySelector('[data-auth-field="nama"]').hidden = !config.showName;
+    document.querySelector('[data-auth-field="konfirmasi"]').hidden = !config.showConfirm;
+    var otpField = document.querySelector('[data-auth-field="verifikasi-otp"]');
+    if (otpField) otpField.hidden = mode !== 'otp';
+    inputNama.required = config.showName;
+    inputKonfirmasi.required = config.showConfirm;
+    inputSandi.autocomplete = config.passwordAutocomplete;
+
+    if (mode === 'forgot') {
+      renderForgotField();
+    } else {
+      removeForgotField();
+    }
+
+    if (mode === 'otp') {
+      renderOtpField();
+    } else {
+      removeOtpField();
+    }
+
+    if (tombolSekunder) {
+      if (config.secondaryVisible) {
+        tombolSekunder.hidden = false;
+        tombolSekunder.textContent = MT.t(config.secondaryText);
+        tombolSekunder.dataset.secondaryAction = config.secondaryAction;
+      } else {
+        tombolSekunder.hidden = true;
+        tombolSekunder.textContent = '';
+      }
+    }
+
+    if (tombolToggleKonfirmasi) {
+      tombolToggleKonfirmasi.hidden = mode !== 'register';
+    }
+
+    if (alertBox) alertBox.hidden = true;
+    bersihkan();
+  }
+
+  function kirim(e) {
+    e.preventDefault();
+    if (autentikasiBerlangsung) return;
+    bersihkan();
+
+    var nilai = {
+      nama: inputNama ? inputNama.value.trim() : '',
+      email: (currentMode === 'forgot' && inputLupaEmail ? inputLupaEmail.value.trim() : (inputEmail ? inputEmail.value.trim() : '')),
+      kataSandi: inputSandi ? inputSandi.value : '',
+      konfirmasiKataSandi: inputKonfirmasi ? inputKonfirmasi.value : '',
+      token: '',
+      password: inputSandi ? inputSandi.value : '',
+      confirmPassword: ''
+    };
+
+    if (currentMode === 'forgot') {
+      if (!nilai.email) {
+        var field = document.getElementById('auth-forgot-email');
+        if (field) {
+          field.setAttribute('aria-invalid', 'true');
+          var errorEl = field.closest('.field').querySelector('.field-error');
+          if (errorEl) {
+            errorEl.hidden = false;
+            errorEl.textContent = MT.t('auth.error_email_required');
+          }
+        }
+        tampilkanAlert(MT.t('auth.form_incomplete_title'), MT.t('auth.form_incomplete_desc'));
+        return;
+      }
+
+      autentikasiBerlangsung = true;
+      tombolMode.disabled = true;
+      MT.setTombolLoading(tombol, true, MT.t('auth.loading'));
+      fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: nilai.email })
+      }).then(function (response) {
+        return response.json().then(function (payload) {
+          if (!response.ok || payload.ok === false) {
+            throw Object.assign(new Error(payload.error && payload.error.message ? payload.error.message : 'Permintaan gagal.'), {
+              code: payload.error && payload.error.code,
+              status: response.status
+            });
+          }
+          return payload;
+        });
+      }).then(function () {
+        tampilkanAlert(MT.t('auth.forgot_success_title'), MT.t('auth.forgot_success_desc'), null, 'info');
+        renderMode('login');
+      }).catch(function (err) {
+        var code = err && err.code ? String(err.code).toUpperCase() : '';
+        var title = code === 'EMAIL_NOT_FOUND' ? MT.t('auth.email_not_found_title') : MT.t('auth.auth_error_title');
+        var message = code === 'EMAIL_NOT_FOUND' ? MT.t('auth.email_not_found_desc') : MT.t('auth.auth_error_desc');
+        tampilkanAlert(title, message, null, 'danger');
+      }).finally(function () {
+        autentikasiBerlangsung = false;
+        tombolMode.disabled = false;
+        MT.setTombolLoading(tombol, false);
+      });
+      return;
+    }
+
+    var hasil = MT.validasi(nilai, MT.aturan.masuk);
+    if (currentMode === 'register') {
+      if (nilai.nama.length < 3 || nilai.nama.length > 160) {
+        hasil.galat.nama = MT.t('auth.error_name_length');
+      }
+      if (nilai.kataSandi.length < 8 || nilai.kataSandi.length > 128) {
+        hasil.galat.kataSandi = MT.t('auth.error_password_length');
+      }
+      if (nilai.konfirmasiKataSandi !== nilai.kataSandi) {
+        hasil.galat.konfirmasiKataSandi = MT.t('auth.error_confirm_password');
+      }
+      hasil.valid = Object.keys(hasil.galat).length === 0;
+    }
+
+    if (!hasil.valid) {
+      MT.tampilkanGalatValidasi(form, hasil.galat);
+      tampilkanAlert(MT.t('auth.form_incomplete_title'), MT.t('auth.form_incomplete_desc'));
+      return;
+    }
+
+    autentikasiBerlangsung = true;
+    tombolMode.disabled = true;
+    MT.setTombolLoading(tombol, true, MT.t('auth.loading'));
+
+    Promise.resolve().then(function () {
+      if (currentMode === 'otp') {
+        return MT.store.verifikasiOtp(inputEmail.value.trim(), inputOtp.value.trim());
+      }
+      return currentMode === 'login'
+        ? MT.store.masuk(nilai.email, nilai.kataSandi)
+        : MT.store.registrasi(nilai.nama, nilai.email, nilai.kataSandi);
+    }).then(function (hasil) {
+      if (hasil && hasil.ok) {
+        form.reset();
+        MT.masukBerhasil();
+        return;
+      }
+      if (hasil && hasil.alasan === 'verifikasi-email') {
+        tampilkanEmailCheck(hasil.email);
+        return;
+      }
+      if (hasil && hasil.alasan === 'email-terdaftar') {
+        tampilkanAlert(MT.t('auth.email_exists_title'), MT.t('auth.email_exists_desc'), null, 'info');
+        return;
+      }
+      if (hasil && hasil.alasan === 'rate-limit') {
+        tampilkanAlert(MT.t('auth.error_rate_limit'), MT.t('auth.error_rate_limit_desc'), null, 'danger');
+        return;
+      }
+      if (hasil && hasil.alasan === 'error') {
+        tampilkanAlert(MT.t('auth.auth_error_title'), MT.esc(hasil.message || MT.t('auth.auth_error_desc')), null, 'danger');
+        return;
+      }
+      tampilkanAlert(MT.t('auth.login_error_title'), MT.t('auth.login_error_desc'), null, 'danger');
+      inputSandi.value = '';
+      inputSandi.focus();
+    }).catch(function (err) {
+      var messages = {
+        EMAIL_NOT_VERIFIED: [MT.t('auth.error_email_not_verified'), MT.t('auth.error_email_not_verified_desc')],
+        ACCOUNT_DISABLED: [MT.t('auth.error_account_disabled'), MT.t('auth.error_account_disabled_desc')],
+        EMAIL_ALREADY_REGISTERED: [MT.t('auth.email_exists_title'), MT.t('auth.email_exists_desc')],
+        IDENTITY_ALREADY_LINKED: [MT.t('auth.error_identity_linked'), MT.t('auth.error_identity_linked_desc')],
+        AUTH_SESSION_MISSING: [MT.t('auth.error_session_missing'), MT.t('auth.error_session_missing_desc')],
+        AUTH_NOT_CONFIGURED: [MT.t('auth.error_auth_not_configured'), MT.t('auth.error_auth_not_configured_desc')],
+        AUTH_PROVIDER_UNAVAILABLE: [MT.t('auth.error_provider_unavailable'), MT.t('auth.error_provider_unavailable_desc')],
+        INVALID_CALLBACK_URL: [MT.t('auth.error_invalid_callback'), MT.t('auth.error_invalid_callback_desc')],
+        MISSING_ORIGIN: [MT.t('auth.error_missing_origin'), MT.t('auth.error_missing_origin_desc')],
+        DATABASE_NOT_CONFIGURED: [MT.t('auth.error_database_not_configured'), MT.t('auth.error_database_not_configured_desc')],
+        DATABASE_SCHEMA_INCOMPLETE: [MT.t('auth.error_database_schema_incomplete'), MT.t('auth.error_database_schema_incomplete_desc')],
+        DATABASE_UNAVAILABLE: [MT.t('auth.error_database_unavailable'), MT.t('auth.error_database_unavailable_desc')],
+        INTERNAL_ERROR: [MT.t('auth.error_internal'), MT.t('auth.error_internal_desc')],
+        INVALID_OTP: [MT.t('auth.error_invalid_otp'), MT.t('auth.error_invalid_otp_desc')],
+        OTP_EXPIRED: [MT.t('auth.error_otp_expired'), MT.t('auth.error_otp_expired_desc')],
+        RATE_LIMIT_EXCEEDED: [MT.t('auth.error_rate_limit'), MT.t('auth.error_rate_limit_desc')]
+      };
+      var code = err && err.code ? String(err.code).toUpperCase() : '';
+      var message = messages[code];
+      tampilkanAlert(message ? message[0] : MT.t('auth.auth_error_title'),
+        message ? message[1] : MT.t('auth.auth_error_desc'),
+        MT.t('auth.auth_error_hint'),
+        message ? 'info' : 'danger');
+    }).finally(function () {
+      autentikasiBerlangsung = false;
+      tombolMode.disabled = false;
+      MT.setTombolLoading(tombol, false);
+    });
+  }
+
+  function tampilkanEmailCheck(email) {
+    email = String(email || '').trim();
+    var box = document.getElementById('auth-email-check');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'auth-email-check';
+      box.className = 'auth-email-check';
+      var alertBox = document.getElementById('auth-alert');
+      if (alertBox && alertBox.parentNode) {
+        alertBox.parentNode.insertBefore(box, alertBox.nextSibling);
+      } else if (form) {
+        form.insertBefore(box, form.firstChild);
+      }
+    }
+    box.hidden = false;
+    box.innerHTML =
+      '<div class="auth-email-check-icon">' + MT.icon('mail') + '</div>' +
+      '<div class="auth-email-check-body">' +
+        '<p class="auth-email-check-title">' + MT.t('auth.email_check_title') + '</p>' +
+        '<p class="auth-email-check-desc" id="auth-email-check-desc">' +
+          MT.t('auth.email_check_sent_to') + ': <span id="auth-email-check-email">' + MT.esc(email) + '</span><br>' +
+          MT.t('auth.email_check_sent_desc') +
+          '<span id="auth-email-check-hint">' + MT.t('auth.email_check_sent_hint') + '</span>' +
+        '</p>' +
+        '<p class="auth-email-check-actions">' +
+          '<button type="button" class="btn btn-secondary btn-block auth-email-check-resend" id="auth-email-resend">' +
+            '<span id="auth-email-resend-label"></span>' +
+            '<span id="auth-email-resend-countdown" class="auth-email-check-countdown" aria-live="polite"></span>' +
+          '</button>' +
+          '<a class="link-button auth-email-check-change" id="auth-email-change" href="#/login">' +
+            MT.t('auth.email_check_change_email') +
+          '</a>' +
+        '</p>' +
+      '</div>';
+
+    document.getElementById('auth-email-resend-label').textContent = MT.t('auth.email_check_resend');
+    document.getElementById('auth-email-resend-countdown').textContent = '';
+    document.getElementById('auth-email-resend').disabled = false;
+    document.getElementById('auth-email-change').textContent = MT.t('auth.email_check_change_email');
+
+    var tombol = document.getElementById('auth-email-resend');
+    var countdownEl = document.getElementById('auth-email-resend-countdown');
+    tombol.addEventListener('click', function kirimUlang() {
+      if (tombol.disabled) return;
+      tombol.disabled = true;
+      var sisa = 60;
+      countdownEl.textContent = MT.t('auth.email_check_resend_in', { n: sisa });
+      var id = setInterval(function () {
+        sisa -= 1;
+        if (sisa <= 0) {
+          clearInterval(id);
+          tombol.disabled = false;
+          tombol.textContent = MT.t('auth.email_check_resend');
+          countdownEl.textContent = '';
+          return;
+        }
+        countdownEl.textContent = MT.t('auth.email_check_resend_in', { n: sisa });
+      }, 1000);
+      setTimeout(function () {
+        clearInterval(id);
+        tombol.disabled = false;
+        tombol.textContent = MT.t('auth.email_check_resend');
+        countdownEl.textContent = '';
+      }, 60000);
+      MT.store.kirimUlangVerifikasi(email).then(function () {
+        tampilkanAlert(MT.t('auth.verify_success_title'), MT.t('auth.verify_success_desc'), null, 'success');
+      }).catch(function () {
+        tampilkanAlert(MT.t('auth.error_resend_title'), MT.t('auth.error_resend_desc'), null, 'danger');
+        tombol.disabled = false;
+        tombol.textContent = MT.t('auth.email_check_resend');
+        countdownEl.textContent = '';
+      });
+    });
+  }
+
+  function siapkanToggleSandi() {
+    var bindToggle = function (toggleEl, inputEl) {
+      if (!toggleEl || !inputEl) return;
+      toggleEl.addEventListener('click', function () {
+        var terlihat = inputEl.type === 'text';
+        inputEl.type = terlihat ? 'password' : 'text';
+        toggleEl.setAttribute('aria-pressed', terlihat ? 'false' : 'true');
+        toggleEl.setAttribute('aria-label', terlihat ? MT.t('auth.password_toggle_show') : MT.t('auth.password_toggle_hide'));
+        toggleEl.innerHTML = MT.icon(terlihat ? 'eye' : 'eyeOff');
+        inputEl.focus();
+      });
+    };
+    bindToggle(tombolToggle, inputSandi);
+    bindToggle(tombolToggleKonfirmasi, inputKonfirmasi);
+  }
+
+  function kirimUlangOtp() {
+    if (!inputEmail || !inputEmail.value) return;
+    if (autentikasiBerlangsung) return;
+    autentikasiBerlangsung = true;
+    tombolKirimUlangOtp.disabled = true;
+    tombolKirimUlangOtp.textContent = MT.t('auth.loading');
+
+    MT.store.kirimUlangVerifikasi(inputEmail.value.trim())
+      .then(function () {
+        tampilkanAlert(MT.t('auth.resend_success_title'), MT.t('auth.resend_success_desc'), null, 'info');
+      })
+      .catch(function (err) {
+        var code = err && err.code ? String(err.code).toUpperCase() : '';
+        var title = code === 'RATE_LIMIT_EXCEEDED' ? MT.t('auth.error_rate_limit') : MT.t('auth.auth_error_title');
+        var message = code === 'RATE_LIMIT_EXCEEDED' ? MT.t('auth.error_rate_limit_desc') : MT.t('auth.auth_error_desc');
+        tampilkanAlert(title, message, null, 'danger');
+      })
+      .finally(function () {
+        autentikasiBerlangsung = false;
+        tombolKirimUlangOtp.disabled = false;
+        tombolKirimUlangOtp.textContent = MT.t('auth.link_resend_otp');
+      });
+  }
+
+  MT.auth = {
+    init: function () {
+      form = document.getElementById('auth-form');
+      if (!form) return;
+
+      document.querySelectorAll('[data-icon]').forEach(function (el) {
+        el.innerHTML = MT.icon(el.getAttribute('data-icon'));
+      });
+
+      inputEmail = document.getElementById('auth-email');
+      inputNama = document.getElementById('auth-name');
+      inputSandi = document.getElementById('auth-password');
+      inputKonfirmasi = document.getElementById('auth-password-confirm');
+      tombol = document.getElementById('auth-submit');
+      alertBox = document.getElementById('auth-alert');
+      tombolToggle = document.getElementById('auth-toggle-password');
+      tombolToggleKonfirmasi = document.getElementById('auth-toggle-password-confirm');
+      tombolMode = document.querySelector('[data-auth-mode-toggle]');
+      tombolSekunder = document.getElementById('auth-secondary-action');
+      inputOtp = document.getElementById('auth-otp');
+      tombolKirimUlangOtp = document.getElementById('auth-resend-otp');
+
+      setAuthTexts();
+      siapkanToggleSandi();
+      if (tombolSekunder) {
+        tombolSekunder.addEventListener('click', function () {
+          if (currentMode === 'otp') {
+            kirimUlangOtp();
+          } else if (currentMode === 'login') {
+            renderMode('forgot');
+          } else {
+            renderMode('login');
+          }
+        });
+      }
+      form.addEventListener('submit', kirim);
+      tombolMode.addEventListener('click', function () {
+        if (currentMode === 'otp') {
+          renderMode('login');
+          inputEmail.readOnly = false;
+          removeOtpField();
+          return;
+        }
+        renderMode(currentMode === 'login' ? 'register' : 'login');
+      });
+
+      [inputNama, inputEmail, inputSandi, inputKonfirmasi, inputOtp].forEach(function (input) {
+        if (!input) return;
+        input.addEventListener('input', function () {
+          input.removeAttribute('aria-invalid');
+          var field = input.closest('.field');
+          var pesanEl = field ? field.querySelector('.field-error') : null;
+          if (pesanEl) { pesanEl.hidden = true; pesanEl.textContent = ''; }
+          if (alertBox) alertBox.hidden = true;
+        });
+      });
+
+      renderMode('login');
+    }
+  };
+})(window.MT);

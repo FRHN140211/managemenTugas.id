@@ -1,0 +1,19 @@
+HTTP/1.1 200 OK
+X-Request-Id: 0183524b-1cf3-4ef7-9beb-3f0432928e06
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.neon.tech; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()
+Vary: Origin
+Access-Control-Allow-Credentials: true
+Cache-Control: public, max-age=0, must-revalidate, stale-while-revalidate=60
+Accept-Ranges: bytes
+Last-Modified: Wed, 28 Oct 2026 07:04:35 GMT
+ETag: W/"4382-1a18153332d"
+Content-Type: text/html; charset=utf-8
+Content-Length: 17282
+Date: Wed, 28 Oct 2026 07:05:11 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

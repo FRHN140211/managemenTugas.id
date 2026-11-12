@@ -1,0 +1,37 @@
+{
+  "ioredis": {
+    "current": "5.11.1",
+    "wanted": "5.11.1",
+    "latest": "6.0.0",
+    "dependent": "Management_Tugas_Redesign_Terbaru",
+    "location": "C:\\laragon\\www\\Management_Tugas_Redesign_Terbaru\\node_modules\\ioredis"
+  },
+  "jose": {
+    "current": "6.2.5",
+    "wanted": "6.2.13",
+    "latest": "6.2.13",
+    "dependent": "Management_Tugas_Redesign_Terbaru",
+    "location": "C:\\laragon\\www\\Management_Tugas_Redesign_Terbaru\\node_modules\\jose"
+  },
+  "resend": {
+    "current": "3.5.0",
+    "wanted": "3.5.0",
+    "latest": "6.34.1",
+    "dependent": "Management_Tugas_Redesign_Terbaru",
+    "location": "C:\\laragon\\www\\Management_Tugas_Redesign_Terbaru\\node_modules\\resend"
+  },
+  "rollup-plugin-visualizer": {
+    "current": "5.14.0",
+    "wanted": "5.14.0",
+    "latest": "7.1.1",
+    "dependent": "Management_Tugas_Redesign_Terbaru",
+    "location": "C:\\laragon\\www\\Management_Tugas_Redesign_Terbaru\\node_modules\\rollup-plugin-visualizer"
+  },
+  "vite": {
+    "current": "6.4.5",
+    "wanted": "6.4.5",
+    "latest": "8.3.5",
+    "dependent": "Management_Tugas_Redesign_Terbaru",
+    "location": "C:\\laragon\\www\\Management_Tugas_Redesign_Terbaru\\node_modules\\vite"
+  }
+}

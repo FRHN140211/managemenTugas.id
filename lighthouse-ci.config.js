@@ -1,0 +1,28 @@
+export default {
+  ci: {
+    collect: {
+      startServerCommand: 'npm run start',
+      url: ['http://localhost:3000'],
+      numberOfRuns: 3,
+      settings: {
+        output: 'json',
+        reportPath: '.lighthouseci/'
+      }
+    },
+    assert: {
+      assertions: {
+        'first-contentful-paint': ['error', { maxNumericValue: 2000 }],
+        'largest-contentful-paint': ['error', { maxNumericValue: 2500 }],
+        'first-input-delay': ['error', { maxNumericValue: 100 }],
+        'cumulative-layout-shift': ['error', { maxNumericValue: 0.1 }],
+        'interactive': ['error', { maxNumericValue: 3800 }],
+        'total-byte-weight': ['error', { maxNumericValue: 500000 }],
+        'performance': ['error', { minNumericValue: 0.9 }]
+      }
+    },
+    upload: {
+      target: 'filesystem',
+      outputDir: '.lighthouseci/'
+    }
+  }
+};

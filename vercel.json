@@ -1,0 +1,19 @@
+{
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/tasks", "destination": "/index.html" },
+    { "source": "/tugas", "destination": "/index.html" },
+    { "source": "/reports", "destination": "/index.html" },
+    { "source": "/laporan", "destination": "/index.html" },
+    { "source": "/reminders", "destination": "/index.html" },
+    { "source": "/pengingat", "destination": "/index.html" },
+    { "source": "/users", "destination": "/index.html" },
+    { "source": "/pengguna", "destination": "/index.html" },
+    { "source": "/activity", "destination": "/index.html" },
+    { "source": "/aktivitas", "destination": "/index.html" },
+    { "source": "/notes", "destination": "/index.html" },
+    { "source": "/catatan", "destination": "/index.html" },
+    { "source": "/profile", "destination": "/index.html" },
+    { "source": "/profil", "destination": "/index.html" }
+  ]
+}
