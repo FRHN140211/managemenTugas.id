@@ -279,6 +279,175 @@ window.MT = window.MT || {};
     '</button>';
   };
 
+  var selectCounter = 0;
+
+  function enhanceSelect(select) {
+    if (select.dataset.customSelect || select.multiple || select.size > 1) return;
+
+    var parent = select.parentElement;
+    var wrapper = document.createElement('div');
+    var trigger = document.createElement('button');
+    var label = document.createElement('span');
+    var arrow = document.createElement('span');
+    var listbox = document.createElement('div');
+    var listboxId = 'custom-select-list-' + (++selectCounter);
+    wrapper.className = 'custom-select';
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger';
+    trigger.setAttribute('role', 'combobox');
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-controls', listboxId);
+    label.className = 'custom-select-label';
+    arrow.className = 'custom-select-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.innerHTML = MT.icon('chevronDown');
+    trigger.appendChild(label);
+    trigger.appendChild(arrow);
+    listbox.id = listboxId;
+    listbox.className = 'custom-select-listbox';
+    listbox.setAttribute('role', 'listbox');
+    listbox.hidden = true;
+
+    parent.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+    wrapper.appendChild(trigger);
+    wrapper.appendChild(listbox);
+    select.dataset.customSelect = 'true';
+    select.classList.add('custom-select-native');
+    select.tabIndex = -1;
+    select.setAttribute('aria-hidden', 'true');
+    if (parent.classList.contains('select-wrap') || parent.classList.contains('activity-filter')) {
+      parent.classList.add('has-custom-select');
+    }
+
+    function selectedIndex() {
+      return select.selectedIndex < 0 ? 0 : select.selectedIndex;
+    }
+
+    function synchronize() {
+      var index = selectedIndex();
+      var selected = select.options[index];
+      label.textContent = selected ? selected.textContent : '';
+      trigger.disabled = select.disabled;
+      trigger.setAttribute('aria-expanded', listbox.hidden ? 'false' : 'true');
+      trigger.setAttribute('aria-label', select.getAttribute('aria-label') ||
+        (select.labels && select.labels.length ? select.labels[0].textContent.trim() : 'Pilih opsi'));
+      ['aria-invalid', 'aria-required', 'aria-describedby', 'aria-labelledby'].forEach(function (name) {
+        if (select.hasAttribute(name)) trigger.setAttribute(name, select.getAttribute(name));
+        else trigger.removeAttribute(name);
+      });
+
+      while (listbox.firstChild) listbox.removeChild(listbox.firstChild);
+      Array.prototype.forEach.call(select.options, function (option, optionIndex) {
+        var item = document.createElement('div');
+        item.className = 'custom-select-option';
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', optionIndex === index ? 'true' : 'false');
+        item.setAttribute('aria-disabled', option.disabled ? 'true' : 'false');
+        item.tabIndex = -1;
+        item.textContent = option.textContent;
+        item.addEventListener('click', function () {
+          if (option.disabled) return;
+          select.selectedIndex = optionIndex;
+          select.dispatchEvent(new Event('change', { bubbles: true }));
+          close();
+          trigger.focus();
+        });
+        listbox.appendChild(item);
+      });
+    }
+
+    function close() {
+      listbox.hidden = true;
+      wrapper.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+
+    function open() {
+      document.querySelectorAll('.custom-select.is-open').forEach(function (other) {
+        if (other !== wrapper) {
+          other.classList.remove('is-open');
+          var otherList = other.querySelector('.custom-select-listbox');
+          var otherTrigger = other.querySelector('.custom-select-trigger');
+          if (otherList) otherList.hidden = true;
+          if (otherTrigger) otherTrigger.setAttribute('aria-expanded', 'false');
+        }
+      });
+      listbox.hidden = false;
+      wrapper.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      var current = listbox.querySelector('[role="option"][aria-selected="true"]:not([aria-disabled="true"])') ||
+        listbox.querySelector('[role="option"]:not([aria-disabled="true"])');
+      if (current) {
+        current.focus();
+        current.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    trigger.addEventListener('click', function () {
+      if (listbox.hidden) open();
+      else close();
+    });
+    trigger.addEventListener('keydown', function (event) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        open();
+      }
+    });
+    listbox.addEventListener('keydown', function (event) {
+      var items = Array.prototype.slice.call(listbox.querySelectorAll('[role="option"]:not([aria-disabled="true"])'));
+      var currentIndex = items.indexOf(document.activeElement);
+      var nextIndex = currentIndex;
+      if (event.key === 'ArrowDown') nextIndex = Math.min(items.length - 1, currentIndex + 1);
+      else if (event.key === 'ArrowUp') nextIndex = Math.max(0, currentIndex - 1);
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = items.length - 1;
+      else if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+        trigger.focus();
+        return;
+      } else if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (document.activeElement) document.activeElement.click();
+        return;
+      } else {
+        return;
+      }
+      event.preventDefault();
+      if (items[nextIndex]) items[nextIndex].focus();
+    });
+    select.addEventListener('change', synchronize);
+    synchronize();
+  }
+
+  function enhanceSelects(root) {
+    if (root.nodeType === 1 && root.matches('select')) enhanceSelect(root);
+    if (root.querySelectorAll) root.querySelectorAll('select').forEach(enhanceSelect);
+  }
+
+  document.addEventListener('click', function (event) {
+    if (event.target.closest('.custom-select')) return;
+    document.querySelectorAll('.custom-select.is-open').forEach(function (wrapper) {
+      wrapper.classList.remove('is-open');
+      var listbox = wrapper.querySelector('.custom-select-listbox');
+      var trigger = wrapper.querySelector('.custom-select-trigger');
+      if (listbox) listbox.hidden = true;
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    });
+  });
+  enhanceSelects(document);
+  if (window.MutationObserver && document.body) {
+    var selectObserver = new window.MutationObserver(function (mutations) {
+      mutations.forEach(function (mutation) {
+        mutation.addedNodes.forEach(function (node) {
+          if (node.nodeType === 1) enhanceSelects(node);
+        });
+      });
+    });
+    selectObserver.observe(document.body, { childList: true, subtree: true });
+  }
+
   var systemThemeQuery = window.matchMedia
     ? window.matchMedia('(prefers-color-scheme: dark)')
     : null;

@@ -128,14 +128,14 @@ window.MT = window.MT || {};
         (state.userId === user.id ? ' selected' : '') + '>' + esc(user.name) + '</option>';
     });
     return '<div class="activity-toolbar" id="activity-filters">' +
-      '<label class="activity-filter"><span>Rentang waktu</span><select data-activity-filter="range" aria-label="Pilih rentang waktu">' +
-        optionsRentang() + '</select></label>' +
+      '<div class="activity-filter"><span>Rentang waktu</span><select data-activity-filter="range" aria-label="Pilih rentang waktu">' +
+        optionsRentang() + '</select></div>' +
       (state.range === 'year'
-        ? '<label class="activity-filter"><span>Tahun</span><select data-activity-filter="year" aria-label="Pilih tahun">' + tahun + '</select></label>'
+        ? '<div class="activity-filter"><span>Tahun</span><select data-activity-filter="year" aria-label="Pilih tahun">' + tahun + '</select></div>'
         : '') +
       (owner
-        ? '<label class="activity-filter activity-filter-user"><span>Pengguna</span><select data-activity-filter="user" aria-label="Pilih pengguna">' +
-            userOptions + '</select></label>'
+        ? '<div class="activity-filter activity-filter-user"><span>Pengguna</span><select data-activity-filter="user" aria-label="Pilih pengguna">' +
+            userOptions + '</select></div>'
         : '') +
       '<span class="activity-timezone">Zona waktu ' + esc(data && data.timezone || 'Asia/Jakarta') + '</span>' +
     '</div>';
