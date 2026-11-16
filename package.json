@@ -43,7 +43,7 @@
     "@neon/env": "^1.6.5",
     "@neondatabase/auth": "^0.7.0-beta",
     "@neondatabase/serverless": "^1.2.0",
-    "@upstash/ratelimit": "^2.2.0",
+    "@upstash/ratelimit": "^2.2.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.9",
